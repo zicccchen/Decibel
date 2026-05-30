@@ -1,0 +1,28 @@
+{
+  "name": "decibel-grid-bot",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Decibel Grid Trading Bot on Aptos",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "tsx src/index.ts",
+    "dev": "tsx --watch src/index.ts"
+  },
+  "dependencies": {
+    "@aptos-labs/ts-sdk": "^5.2.1",
+    "@decibeltrade/sdk": "latest",
+    "bs58": "^6.0.0",
+    "dotenv": "^16.4.5",
+    "express": "^5.2.1",
+    "ws": "^8.19.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.18.1",
+    "tsx": "^4.20.0",
+    "typescript": "^5.6.0"
+  }
+}

@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.env
+/.env.*
+!.env.example
+
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.*
+
+.DS_Store
+coverage/
+*.local

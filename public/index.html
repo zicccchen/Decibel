@@ -1,0 +1,2664 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Decibel Grid Bot</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23f59e0b'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-family='Arial,sans-serif' font-weight='800' font-size='14' fill='white'%3EdB%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #edf3f8;
+      --bg-accent: #f8fbff;
+      --card: rgba(255, 255, 255, 0.92);
+      --card-strong: #ffffff;
+      --card-hover: #f8fbff;
+      --border: rgba(148, 163, 184, 0.22);
+      --border-strong: rgba(148, 163, 184, 0.35);
+      --border-light: rgba(226, 232, 240, 0.7);
+      --text: #0f172a;
+      --text-secondary: #475569;
+      --text-dim: #94a3b8;
+      --green: #16a34a;
+      --green-bg: #f0fdf4;
+      --green-border: #bbf7d0;
+      --red: #dc2626;
+      --red-bg: #fef2f2;
+      --red-border: #fecaca;
+      --blue: #2563eb;
+      --blue-bg: #eff6ff;
+      --yellow: #ca8a04;
+      --yellow-bg: #fefce8;
+      --purple: #7c3aed;
+      --accent: #0f172a;
+      --accent-hover: #172554;
+      --sidebar-bg: linear-gradient(180deg, #0f172a 0%, #111827 58%, #172033 100%);
+      --sidebar-border: rgba(148, 163, 184, 0.18);
+      --sidebar-text: #e2e8f0;
+      --sidebar-muted: #94a3b8;
+      --sidebar-w: 292px;
+      --shadow-lg: 0 24px 60px rgba(15, 23, 42, 0.12);
+      --shadow-md: 0 14px 36px rgba(15, 23, 42, 0.08);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(37, 99, 235, 0.08), transparent 26%),
+        radial-gradient(circle at top right, rgba(22, 163, 74, 0.08), transparent 24%),
+        linear-gradient(180deg, #f6fbff 0%, var(--bg) 46%, #eaf1f7 100%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ---- Header ---- */
+    .header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 0 24px; height: 68px;
+      background: rgba(255, 255, 255, 0.76);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(14px);
+      position: sticky; top: 0; z-index: 50;
+    }
+    .header-left { display: flex; align-items: center; gap: 20px; }
+    .logo { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 700; }
+    .logo-icon {
+      width: 32px; height: 32px; border-radius: 9px;
+      background: linear-gradient(135deg, #f59e0b, #fb7185);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 800; color: #fff;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.28), 0 10px 24px rgba(245, 158, 11, 0.28);
+    }
+    .header-nav { display: flex; gap: 4px; }
+    .header-nav a {
+      padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 600;
+      color: var(--text-secondary); text-decoration: none; transition: all 0.15s;
+    }
+    .header-nav a:hover { background: rgba(15, 23, 42, 0.06); color: var(--text); }
+    .header-nav a.active {
+      background: linear-gradient(135deg, #0f172a, #1d4ed8);
+      color: #fff;
+      box-shadow: 0 12px 24px rgba(29, 78, 216, 0.18);
+    }
+
+    .header-right { display: flex; align-items: center; gap: 12px; }
+    .badge {
+      padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; }
+    .badge-running { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+    .badge-running::before { background: var(--green); animation: pulse-dot 2s infinite; }
+    .badge-stopped { background: #f3f4f6; color: var(--text-dim); border: 1px solid var(--border); }
+    .badge-stopped::before { background: var(--text-dim); }
+    .badge-connected { background: var(--blue-bg); color: var(--blue); border: 1px solid #bfdbfe; }
+    .badge-connected::before { background: var(--blue); }
+    @keyframes pulse-dot { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+    .wallet-btn {
+      padding: 8px 16px; border: 1px solid var(--border); border-radius: 999px;
+      background: var(--accent); color: #fff; font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: all 0.15s; font-family: 'Inter', sans-serif;
+      box-shadow: 0 14px 24px rgba(15, 23, 42, 0.12);
+    }
+    .wallet-btn:hover { background: var(--accent-hover); }
+    .wallet-btn.connected {
+      background: var(--card); color: var(--text); border: 1px solid var(--border);
+    }
+
+    /* ---- Layout: Sidebar + Main ---- */
+    .app-layout {
+      display: flex; min-height: calc(100vh - 68px);
+    }
+    .sidebar {
+      width: var(--sidebar-w); flex-shrink: 0; padding: 20px 18px 28px;
+      border-right: 1px solid var(--sidebar-border); background: var(--sidebar-bg);
+      overflow-y: auto;
+      color: var(--sidebar-text);
+      position: sticky;
+      top: 68px;
+      height: calc(100vh - 68px);
+    }
+    .main-content {
+      flex: 1; padding: 24px 24px 40px; overflow-y: auto;
+    }
+
+    /* ---- Sidebar Sections ---- */
+    .sidebar-section { margin-bottom: 24px; }
+    .sidebar-title {
+      font-size: 11px; font-weight: 700; color: var(--sidebar-muted);
+      text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;
+    }
+    .sidebar-stat {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 0; font-size: 13px;
+    }
+    .sidebar-stat-label { color: var(--sidebar-muted); }
+    .sidebar-stat-value { font-weight: 600; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--sidebar-text); }
+
+    .sidebar-card {
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px; padding: 16px; margin-bottom: 12px;
+      backdrop-filter: blur(10px);
+    }
+    .sidebar-card-title {
+      font-size: 12px; font-weight: 600; color: var(--sidebar-muted); margin-bottom: 8px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .sidebar-card-value {
+      font-size: 20px; font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .sidebar-card-sub { font-size: 11px; color: var(--sidebar-muted); margin-top: 4px; }
+
+    /* ---- Cards ---- */
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 20px; padding: 22px; margin-bottom: 18px;
+      box-shadow: var(--shadow-md);
+      backdrop-filter: blur(14px);
+    }
+    .card-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 16px;
+    }
+    .card-title { font-size: 17px; font-weight: 800; letter-spacing: -0.02em; }
+    .card-subtitle { font-size: 12px; color: var(--text-dim); }
+
+    /* ---- Connect Overlay ---- */
+    .overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+      display: flex; align-items: center; justify-content: center; z-index: 100;
+      animation: fadeIn 0.15s ease;
+    }
+    .overlay.hidden { display: none; }
+    @keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
+
+    .modal {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 32px; width: 420px; max-width: 90vw;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+      animation: slideUp 0.25s ease;
+    }
+    @keyframes slideUp { from{opacity:0;transform:translateY(12px);} to{opacity:1;transform:translateY(0);} }
+    .modal h2 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    .modal p { font-size: 13px; color: var(--text-secondary); margin-bottom: 24px; }
+
+    .wallet-options { display: flex; flex-direction: column; gap: 6px; }
+    .wallet-option {
+      display: flex; align-items: center; gap: 14px;
+      padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px;
+      background: var(--card); color: var(--text); font-size: 14px; font-weight: 500;
+      cursor: pointer; transition: all 0.15s; width: 100%; text-align: left;
+      font-family: 'Inter', sans-serif;
+    }
+    .wallet-option:hover { background: var(--bg); border-color: #d1d5db; }
+    .wallet-option .icon {
+      width: 34px; height: 34px; border-radius: 8px;
+      background: var(--bg); display: flex; align-items: center; justify-content: center;
+      font-size: 15px; font-weight: 700; color: var(--text); flex-shrink: 0;
+      border: 1px solid var(--border);
+    }
+
+    .divider {
+      display: flex; align-items: center; gap: 14px;
+      margin: 20px 0; color: var(--text-dim); font-size: 11px;
+      text-transform: uppercase; letter-spacing: 1px; font-weight: 600;
+    }
+    .divider::before, .divider::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+
+    /* ---- Form ---- */
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group label {
+      font-size: 12px; color: var(--text-secondary); font-weight: 500;
+    }
+    .form-group input, .form-group select {
+      padding: 10px 12px; background: var(--card); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); font-size: 13px;
+      font-family: 'JetBrains Mono', monospace; transition: all 0.15s;
+    }
+    .form-group input:focus, .form-group select:focus {
+      outline: none; border-color: var(--text);
+      box-shadow: 0 0 0 3px rgba(0,0,0,0.06);
+    }
+    .form-group input::placeholder { color: var(--text-dim); }
+
+    /* ---- Config Grid ---- */
+    .config-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    /* ---- Buttons ---- */
+    .btn {
+      padding: 11px 24px; border: none; border-radius: 12px; font-size: 13px;
+      font-weight: 600; cursor: pointer; transition: all 0.15s;
+      font-family: 'Inter', sans-serif;
+    }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary {
+      background: var(--accent); color: #fff;
+    }
+    .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+    .btn-start {
+      background: linear-gradient(135deg, #0f172a, #1d4ed8);
+      color: #fff;
+      box-shadow: 0 16px 30px rgba(29, 78, 216, 0.24);
+    }
+    .btn-start:hover:not(:disabled) { background: var(--accent-hover); }
+    .btn-stop {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      color: #fff;
+      box-shadow: 0 16px 30px rgba(220, 38, 38, 0.18);
+    }
+    .btn-stop:hover:not(:disabled) { background: #b91c1c; }
+    .btn-ghost {
+      background: transparent; color: var(--text-secondary); border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { background: var(--bg); color: var(--text); }
+
+    /* ---- Stats Row ---- */
+    .stats-row {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px; margin-bottom: 16px;
+    }
+    .stat-item {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px; text-align: center;
+    }
+    .stat-item-label {
+      font-size: 11px; color: var(--text-dim); font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;
+    }
+    .stat-item-value {
+      font-size: 20px; font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ---- Perps Cards (like Yield AI) ---- */
+    .perps-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 12px;
+    }
+    .perp-card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(246,250,255,0.96));
+      border: 1px solid var(--border);
+      border-radius: 18px; padding: 18px; transition: box-shadow 0.2s, transform 0.2s, border-color 0.2s;
+      box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
+    }
+    .perp-card:hover { box-shadow: 0 18px 34px rgba(15,23,42,0.1); transform: translateY(-2px); }
+    .perp-card-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 12px;
+    }
+    .perp-card-pair {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 14px; font-weight: 600;
+    }
+    .perp-card-pair .pair-icon {
+      width: 24px; height: 24px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700;
+    }
+    .perp-card-badge {
+      font-size: 11px; font-weight: 700; color: var(--text-dim);
+      background: rgba(15,23,42,0.04); padding: 5px 9px; border-radius: 999px;
+    }
+    .perp-card-price {
+      font-size: 24px; font-weight: 700; margin-bottom: 2px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .perp-card-sub { font-size: 12px; color: var(--text-dim); margin-bottom: 14px; }
+    .perp-card-funding {
+      font-size: 12px; margin-bottom: 14px;
+    }
+    .perp-card-btn {
+      width: 100%; padding: 10px; border: none; border-radius: 8px;
+      background: var(--accent); color: #fff; font-size: 13px; font-weight: 600;
+      cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.15s;
+    }
+    .perp-card-btn:hover { background: var(--accent-hover); }
+    .perp-card.active {
+      border-color: rgba(37, 99, 235, 0.28);
+      box-shadow: 0 20px 40px rgba(37,99,235,0.12);
+      background: linear-gradient(180deg, #ffffff 0%, #eef5ff 100%);
+    }
+
+    /* ---- Trade Terminal ---- */
+    .trade-terminal {
+      background:
+        radial-gradient(circle at top left, rgba(37,99,235,0.08), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(22,163,74,0.08), transparent 24%),
+        linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(248,250,252,0.98) 100%);
+      overflow: hidden;
+    }
+    .trade-terminal-shell {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(360px, 0.72fr);
+      gap: 18px;
+      align-items: stretch;
+    }
+    .trade-market-panel {
+      background: linear-gradient(180deg, #ffffff 0%, #f9fbff 100%);
+      border: 1px solid #dbe3f0;
+      border-radius: 18px;
+      padding: 20px;
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+    .trade-market-panel::after {
+      content: '';
+      position: absolute;
+      inset: auto -40px -80px auto;
+      width: 220px;
+      height: 220px;
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(22,163,74,0.12), transparent 68%);
+      pointer-events: none;
+    }
+    .trade-order-panel {
+      background: #ffffff;
+      border: 1px solid #d6dbe5;
+      border-radius: 18px;
+      padding: 20px;
+      box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
+      position: sticky;
+      top: 86px;
+    }
+    .trade-market-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 18px;
+      margin-bottom: 16px;
+      position: relative;
+      z-index: 1;
+    }
+    .trade-market-title {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .trade-market-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 800;
+      font-size: 20px;
+      box-shadow: inset 0 -8px 20px rgba(255,255,255,0.15);
+    }
+    .trade-market-name {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+    .trade-market-sub {
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-top: 4px;
+    }
+    .trade-market-price {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 36px;
+      font-weight: 800;
+      text-align: right;
+      letter-spacing: -0.03em;
+    }
+    .trade-market-price-sub {
+      font-size: 11px;
+      color: var(--text-dim);
+      text-align: right;
+      margin-top: 6px;
+    }
+    .trade-market-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+      position: relative;
+      z-index: 1;
+    }
+    .trade-toolbar-chip,
+    .trade-toolbar-select {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: rgba(255,255,255,0.92);
+      color: var(--text-secondary);
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .trade-toolbar-select {
+      font-family: 'Inter', sans-serif;
+    }
+    .trade-market-stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+      position: relative;
+      z-index: 1;
+    }
+    .trade-mini-stat {
+      border: 1px solid #e3e8f2;
+      border-radius: 14px;
+      padding: 12px;
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(6px);
+    }
+    .trade-mini-label {
+      font-size: 10px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+    .trade-mini-value {
+      font-size: 17px;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .trade-market-stage {
+      position: relative;
+      min-height: 660px;
+      border: 1px solid #dbe3f0;
+      border-radius: 18px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.94) 0%, rgba(244,247,251,0.98) 100%),
+        radial-gradient(circle at top center, rgba(37,99,235,0.08), transparent 34%);
+      overflow: hidden;
+      padding: 20px;
+      z-index: 1;
+    }
+    .trade-market-stage::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(transparent 23%, rgba(148,163,184,0.16) 24%, transparent 25%, transparent 49%, rgba(148,163,184,0.16) 50%, transparent 51%, transparent 74%, rgba(148,163,184,0.16) 75%, transparent 76%),
+        linear-gradient(90deg, transparent 23%, rgba(148,163,184,0.16) 24%, transparent 25%, transparent 49%, rgba(148,163,184,0.16) 50%, transparent 51%, transparent 74%, rgba(148,163,184,0.16) 75%, transparent 76%);
+      pointer-events: none;
+    }
+    .trade-stage-overlay {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      height: 100%;
+      min-height: 620px;
+    }
+    .trade-stage-breadcrumb {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .trade-stage-symbol {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+    .trade-stage-badges {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .trade-stage-badge {
+      border-radius: 999px;
+      padding: 6px 10px;
+      border: 1px solid #dbe3f0;
+      background: rgba(255,255,255,0.9);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-secondary);
+    }
+    .trade-stage-center {
+      display: grid;
+      gap: 14px;
+    }
+    .trade-stage-price {
+      font-size: 54px;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 800;
+      letter-spacing: -0.05em;
+      line-height: 1;
+    }
+    .trade-stage-caption {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+    .trade-stage-line {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 0 6px rgba(22,163,74,0.12);
+    }
+    .trade-stage-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-top: 20px;
+      margin-bottom: 16px;
+    }
+    .trade-market-note {
+      border: 1px solid #dbe3f0;
+      border-radius: 14px;
+      padding: 14px;
+      background: rgba(255,255,255,0.88);
+      color: var(--text-secondary);
+      font-size: 13px;
+      line-height: 1.7;
+      max-width: 70%;
+    }
+    .trade-stage-actions {
+      display: flex;
+      gap: 10px;
+    }
+    .trade-stage-history {
+      position: relative;
+      z-index: 1;
+      border: 1px solid #dbe3f0;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.9);
+      overflow: hidden;
+    }
+    .trade-stage-history-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 14px 16px;
+      border-bottom: 1px solid #e2e8f0;
+      background: rgba(248,250,252,0.92);
+    }
+    .trade-stage-history-title {
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+    }
+    .trade-stage-history-sub {
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+    .trade-stage-chart {
+      height: 430px;
+      border-top: 1px solid #eef2f7;
+      background: linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(248,250,252,0.96) 100%);
+    }
+    .trade-stage-btn {
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .trade-order-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .trade-order-title {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+    .trade-order-sub {
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-top: 4px;
+    }
+    .trade-order-chip {
+      border-radius: 999px;
+      border: 1px solid #dbe3f0;
+      padding: 7px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      background: #f8fafc;
+    }
+    .trade-order-balance {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      border: 1px solid #e4e8ef;
+      border-radius: 14px;
+      background: #f8fafc;
+      margin-bottom: 14px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
+    }
+    .trade-order-balance-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-weight: 600;
+    }
+    .trade-order-balance-value {
+      font-size: 22px;
+      font-weight: 800;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .trade-position-card {
+      border: 1px solid #e4e8ef;
+      border-radius: 14px;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+    .trade-position-toolbar {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .trade-position-action {
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid #dbe3f0;
+      background: #fff;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+    }
+    .trade-position-action:hover {
+      border-color: #cbd5e1;
+      background: #f8fafc;
+    }
+    .trade-position-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .trade-position-title {
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .trade-position-badge {
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-size: 11px;
+      font-weight: 800;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      background: #f8fafc;
+    }
+    .trade-position-badge.long {
+      color: var(--green);
+      border-color: var(--green-border);
+      background: var(--green-bg);
+    }
+    .trade-position-badge.short {
+      color: var(--red);
+      border-color: var(--red-border);
+      background: var(--red-bg);
+    }
+    .trade-position-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .trade-position-stat {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: #f8fafc;
+    }
+    .trade-position-stat-label {
+      font-size: 10px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+      font-weight: 700;
+    }
+    .trade-position-stat-value {
+      font-size: 15px;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .trade-toggle-stack {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .trade-toggle-group {
+      display: grid;
+      gap: 8px;
+    }
+    .trade-toggle-label {
+      font-size: 11px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 700;
+    }
+    .trade-toggle-buttons {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .trade-toggle-buttons.three {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .trade-toggle-btn {
+      padding: 11px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--text-secondary);
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: 'Inter', sans-serif;
+    }
+    .trade-toggle-btn:hover {
+      border-color: #cbd5e1;
+      color: var(--text);
+    }
+    .trade-toggle-btn.active {
+      border-color: #0f172a;
+      background: #0f172a;
+      color: #fff;
+    }
+    .trade-toggle-btn.long.active {
+      border-color: #16a34a;
+      background: #16a34a;
+    }
+    .trade-toggle-btn.short.active {
+      border-color: #dc2626;
+      background: #dc2626;
+    }
+    .trade-ticket-grid {
+      display: grid;
+      gap: 12px;
+    }
+    .trade-ticket-section {
+      border: 1px solid #e4e8ef;
+      border-radius: 14px;
+      padding: 14px;
+      background: linear-gradient(180deg, rgba(248,250,252,0.92) 0%, #ffffff 100%);
+      margin-bottom: 14px;
+    }
+    .trade-ticket-section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .trade-ticket-section-title {
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .trade-inline-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .trade-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .trade-field label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-weight: 600;
+    }
+    .trade-field input,
+    .trade-field select {
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #fff;
+      font-size: 14px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .trade-field select {
+      font-family: 'Inter', sans-serif;
+      font-weight: 600;
+    }
+    .trade-size-quick {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .trade-size-chip {
+      border: 1px solid var(--border);
+      background: #fff;
+      border-radius: 10px;
+      padding: 9px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+    .trade-size-chip:hover {
+      border-color: #cbd5e1;
+      color: var(--text);
+      background: #f8fafc;
+    }
+    .trade-ticket-actions {
+      display: grid;
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .trade-submit-btn {
+      width: 100%;
+      padding: 14px 16px;
+      border: none;
+      border-radius: 12px;
+      color: #fff;
+      font-weight: 800;
+      font-size: 15px;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #16a34a, #15803d);
+      box-shadow: 0 16px 28px rgba(22, 163, 74, 0.22);
+    }
+    .trade-submit-btn.short {
+      background: linear-gradient(135deg, #dc2626, #b91c1c);
+      box-shadow: 0 16px 28px rgba(220, 38, 38, 0.18);
+    }
+    .trade-secondary-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .trade-terminal-result {
+      margin-top: 14px;
+      min-height: 48px;
+    }
+
+    /* ---- Order Cards ---- */
+    .order-card {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 16px; border: 1px solid var(--border);
+      border-radius: 10px; margin-bottom: 8px; transition: all 0.15s;
+    }
+    .order-card:hover { background: var(--bg); }
+    .order-card .order-side {
+      font-weight: 700; font-size: 12px; letter-spacing: 0.5px;
+      padding: 3px 8px; border-radius: 4px;
+    }
+    .order-card .order-side.buy { background: var(--green-bg); color: var(--green); }
+    .order-card .order-side.sell { background: var(--red-bg); color: var(--red); }
+    .order-card .order-price {
+      font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 14px;
+    }
+    .order-card .order-meta { font-size: 12px; color: var(--text-secondary); }
+    .order-card .order-status {
+      display: flex; align-items: center; gap: 5px; font-size: 12px;
+    }
+    .status-dot {
+      display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+    }
+    .status-dot.placed { background: var(--blue); }
+    .status-dot.filled { background: var(--green); }
+    .status-dot.error { background: var(--red); }
+    .status-dot.cancelled { background: var(--text-dim); }
+    .status-dot.pending { background: var(--yellow); }
+
+    /* ---- Log ---- */
+    .log-content {
+      max-height: 360px; overflow-y: auto; font-size: 12px;
+      line-height: 1.9; color: var(--text-secondary);
+      background: var(--bg); border-radius: 8px; padding: 14px;
+      font-family: 'JetBrains Mono', monospace;
+      border: 1px solid var(--border);
+    }
+    .log-content::-webkit-scrollbar { width: 4px; }
+    .log-content::-webkit-scrollbar-track { background: transparent; }
+    .log-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    .log-entry.success { color: var(--green); }
+    .log-entry.error { color: var(--red); }
+    .log-entry.warn { color: var(--yellow); }
+    .log-entry.info { color: var(--blue); }
+
+    /* ---- Orders Table ---- */
+    .orders-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .orders-table th {
+      text-align: left; padding: 10px 14px; color: var(--text-dim);
+      border-bottom: 1px solid var(--border); font-size: 11px;
+      text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;
+    }
+    .orders-table td {
+      padding: 10px 14px; border-bottom: 1px solid var(--border-light);
+      font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    }
+    .orders-table tr:hover td { background: var(--bg); }
+
+    /* ---- Onboarding ---- */
+    .onboard-steps { display: flex; gap: 10px; margin-bottom: 20px; }
+    .onboard-step {
+      flex: 1; display: flex; align-items: center; gap: 10px;
+      padding: 14px 16px; border: 1px solid var(--border); border-radius: 10px;
+      background: var(--card); transition: all 0.2s;
+    }
+    .onboard-step.active { border-color: var(--text); background: var(--bg); }
+    .onboard-step.done { border-color: var(--green-border); background: var(--green-bg); }
+    .step-num {
+      width: 28px; height: 28px; border-radius: 50%; display: flex;
+      align-items: center; justify-content: center; font-size: 12px;
+      font-weight: 700; background: var(--bg); color: var(--text-dim); flex-shrink: 0;
+    }
+    .onboard-step.active .step-num { background: var(--accent); color: #fff; }
+    .onboard-step.done .step-num { background: var(--green); color: #fff; }
+    .step-title { font-size: 13px; font-weight: 600; }
+    .step-desc { font-size: 11px; color: var(--text-dim); }
+
+    .onboard-action {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px;
+    }
+    .onboard-action p { font-size: 13px; color: var(--text-secondary); margin-bottom: 14px; line-height: 1.7; }
+    .onboard-result {
+      margin-top: 12px; padding: 10px 14px; border-radius: 8px;
+      font-size: 12px; font-family: 'JetBrains Mono', monospace;
+    }
+    .onboard-result.success { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+    .onboard-result.error { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+    .onboard-result.info { background: var(--blue-bg); color: var(--blue); border: 1px solid #bfdbfe; }
+
+    /* ---- Chart ---- */
+    .chart-interval-btn {
+      padding: 4px 10px; border: 1px solid var(--border); border-radius: 6px;
+      background: var(--card); color: var(--text-dim); font-size: 12px; font-weight: 600;
+      cursor: pointer; transition: all 0.15s; font-family: 'Inter', sans-serif;
+    }
+    .chart-interval-btn:hover { border-color: #d1d5db; color: var(--text); }
+    .chart-interval-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    /* ---- Controls ---- */
+    .controls-bar {
+      display: flex; gap: 10px; align-items: center; margin-bottom: 16px;
+    }
+    .controls-info {
+      margin-left: auto; font-size: 12px; color: var(--text-dim);
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--bg); padding: 7px 12px; border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+
+    /* ---- Empty State ---- */
+    .empty-state {
+      color: var(--text-dim); text-align: center; padding: 32px;
+      font-size: 13px;
+    }
+
+    #tabDashboard {
+      display: grid;
+      gap: 18px;
+    }
+    #configPanel {
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,250,252,0.98) 100%);
+    }
+    #perpsSection {
+      padding: 4px 0 2px;
+    }
+    .ops-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+    .table-card {
+      overflow: hidden;
+    }
+    .table-card .orders-table th {
+      background: rgba(15, 23, 42, 0.03);
+    }
+    .table-card .orders-table td,
+    .table-card .orders-table th {
+      padding-top: 12px;
+      padding-bottom: 12px;
+    }
+
+    /* ---- Responsive ---- */
+    @media (max-width: 1180px) {
+      .trade-terminal-shell { grid-template-columns: 1fr; }
+      .trade-order-panel {
+        position: static;
+      }
+    }
+    @media (max-width: 900px) {
+      .app-layout { flex-direction: column; }
+      .sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+        position: static;
+        height: auto;
+      }
+      .stats-row { grid-template-columns: repeat(3, 1fr); }
+      .config-grid { grid-template-columns: 1fr; }
+      .onboard-steps { flex-direction: column; }
+      .perps-grid { grid-template-columns: 1fr; }
+      .trade-terminal-shell { grid-template-columns: 1fr; }
+      .trade-market-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .trade-inline-grid { grid-template-columns: 1fr; }
+      .trade-market-note { max-width: 100%; }
+      .trade-stage-footer { flex-direction: column; align-items: flex-start; }
+      .ops-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 480px) {
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ==================== Header ==================== -->
+<div class="header">
+  <div class="header-left">
+    <div class="logo">
+      <div class="logo-icon">dB</div>
+      <span>Decibel</span>
+    </div>
+    <nav class="header-nav">
+      <a href="#" class="active" onclick="showTab('dashboard',this);return false;">Dashboard</a>
+      <a href="#" onclick="showTab('positions',this);return false;">Positions</a>
+      <a href="#" onclick="showTab('history',this);return false;">History</a>
+    </nav>
+  </div>
+  <div class="header-right">
+    <span id="statusBadge" class="badge badge-stopped">OFFLINE</span>
+    <button class="wallet-btn" id="walletBtn" onclick="handleWalletClick()">
+      Connect Wallet
+    </button>
+  </div>
+</div>
+
+<!-- ==================== Wallet Connect Modal ==================== -->
+<div class="overlay" id="walletOverlay">
+  <div class="modal">
+    <h2>Connect Wallet</h2>
+    <p>Connect your Aptos wallet to start trading</p>
+
+    <div class="wallet-options">
+      <button class="wallet-option" onclick="connectWallet('petra')">
+        <div class="icon">P</div>
+        <span>Petra Wallet</span>
+      </button>
+      <button class="wallet-option" onclick="connectWallet('martian')">
+        <div class="icon">M</div>
+        <span>Martian Wallet</span>
+      </button>
+      <button class="wallet-option" onclick="connectWallet('pontem')">
+        <div class="icon">N</div>
+        <span>Pontem Wallet</span>
+      </button>
+      <button class="wallet-option" onclick="connectWallet('okx')">
+        <div class="icon">O</div>
+        <span>OKX Wallet</span>
+      </button>
+    </div>
+
+    <div class="divider">OR ENTER MANUALLY</div>
+
+    <div class="form-group">
+      <label>Wallet Address (0x...)</label>
+      <input type="text" id="manualWallet" placeholder="0x..." />
+    </div>
+    <br>
+    <button class="btn btn-primary" style="width:100%" onclick="connectManual()">Confirm</button>
+  </div>
+</div>
+
+<!-- ==================== App Layout ==================== -->
+<div class="app-layout" id="mainContent" style="display:none;">
+
+  <!-- ---- Sidebar ---- -->
+  <div class="sidebar">
+    <!-- Wallet -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">Wallet</div>
+      <div class="sidebar-card">
+        <div class="sidebar-card-title">Total Balance</div>
+        <div class="sidebar-card-value text-green" id="statBalance" style="color:var(--green)">$0.00</div>
+        <div class="sidebar-card-sub">Available to trade</div>
+      </div>
+      <div class="sidebar-card">
+        <div class="sidebar-card-title">AMPs</div>
+        <div class="sidebar-card-value" id="statAmps" style="color:var(--yellow)">0</div>
+      </div>
+      <div class="sidebar-stat">
+        <span class="sidebar-stat-label">Subaccount</span>
+        <span class="sidebar-stat-value" id="statSubaccount" style="font-size:11px;">--</span>
+      </div>
+    </div>
+
+    <!-- Bot Status -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">Bot Status</div>
+      <div class="sidebar-stat">
+        <span class="sidebar-stat-label">Market</span>
+        <span class="sidebar-stat-value" id="statMarketSidebar">--</span>
+      </div>
+      <div class="sidebar-stat">
+        <span class="sidebar-stat-label">Strategy</span>
+        <span class="sidebar-stat-value" id="statStrategySidebar">--</span>
+      </div>
+      <div class="sidebar-stat">
+        <span class="sidebar-stat-label">Price</span>
+        <span class="sidebar-stat-value" id="statPriceSidebar">--</span>
+      </div>
+      <div class="sidebar-stat" id="gridTargetRow" style="display:none;">
+        <span class="sidebar-stat-label">Grid Target</span>
+        <span class="sidebar-stat-value" id="statGridTargetSidebar">--</span>
+      </div>
+      <div class="sidebar-stat" id="gridActiveRow" style="display:none;">
+        <span class="sidebar-stat-label">Active Layers</span>
+        <span class="sidebar-stat-value" id="statGridActiveSidebar">--</span>
+      </div>
+      <div class="sidebar-stat" id="gridSplitRow" style="display:none;">
+        <span class="sidebar-stat-label">Buy / Sell</span>
+        <span class="sidebar-stat-value" id="statGridSplitSidebar">--</span>
+      </div>
+      <div class="sidebar-stat">
+        <span class="sidebar-stat-label">Rounds</span>
+        <span class="sidebar-stat-value" id="statRoundsSidebar" style="color:var(--blue)">0</span>
+      </div>
+      <div class="sidebar-stat">
+        <span class="sidebar-stat-label">Volume</span>
+        <span class="sidebar-stat-value" id="statVolumeSidebar" style="color:var(--green)">$0</span>
+      </div>
+      <div class="sidebar-stat">
+        <span class="sidebar-stat-label">Target</span>
+        <span class="sidebar-stat-value" id="statTargetSidebar">--</span>
+      </div>
+      <div class="sidebar-stat">
+        <span class="sidebar-stat-label">Profit</span>
+        <span class="sidebar-stat-value" id="statProfitSidebar" style="color:var(--purple)">$0.00</span>
+      </div>
+      <div class="sidebar-stat">
+        <span class="sidebar-stat-label">Uptime</span>
+        <span class="sidebar-stat-value" id="statUptime">00:00:00</span>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="sidebar-section">
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-start" id="btnStart" onclick="startBot()" style="flex:1;">Start</button>
+        <button class="btn btn-stop" id="btnStop" onclick="stopBot()" disabled style="flex:1;">Stop</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ---- Main ---- -->
+  <div class="main-content" id="tabDashboard">
+
+    <!-- Onboarding -->
+    <div class="card" id="onboardPanel">
+      <div class="card-header">
+        <div class="card-title">Account Setup</div>
+      </div>
+
+      <div class="onboard-steps">
+        <div class="onboard-step active" id="step1">
+          <div class="step-num">1</div>
+          <div>
+            <div class="step-title">Activate Decibel</div>
+            <div class="step-desc">Auto-redeem referral</div>
+          </div>
+        </div>
+        <div class="onboard-step" id="step2">
+          <div class="step-num">2</div>
+          <div>
+            <div class="step-title">One-Click Setup</div>
+            <div class="step-desc">Subaccount + API + Builder</div>
+          </div>
+        </div>
+        <div class="onboard-step" id="step3">
+          <div class="step-num">3</div>
+          <div>
+            <div class="step-title">Start Trading</div>
+            <div class="step-desc">Configure & launch</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="onboard-action" id="action1">
+        <p>Click below to automatically activate your Decibel account. No manual registration needed.</p>
+        <button class="btn btn-primary" id="btnRedeem" onclick="redeemReferral()">Activate Decibel Account</button>
+        <div id="redeemResult"></div>
+      </div>
+
+      <div class="onboard-action" id="action2" style="display:none;">
+        <p>Enter your Owner wallet private key. The system will automatically create subaccount, authorize API wallet, and approve Builder Fee.</p>
+        <p style="color:var(--yellow);font-size:12px;padding:10px 14px;background:var(--yellow-bg);border-radius:8px;border:1px solid #fef08a;">
+          Private key is used for this operation only. Owner wallet needs APT for gas.
+        </p>
+        <div class="form-group" style="margin:14px 0;">
+          <label>Owner Wallet Private Key</label>
+          <input type="password" id="ownerPrivateKey" placeholder="0x... or ed25519 private key" />
+        </div>
+        <div style="display:flex;gap:10px;">
+          <button class="btn btn-primary" id="btnOneClickSetup" onclick="oneClickSetup()">One-Click Setup</button>
+          <button class="btn btn-ghost" onclick="skipToTrading()">Already Set Up</button>
+        </div>
+        <div id="setupResult"></div>
+      </div>
+
+      <div class="onboard-action" id="action3" style="display:none;">
+        <p style="color:var(--green)">Account setup complete! Configure parameters and start trading.</p>
+        <button class="btn btn-primary" onclick="finishOnboard()">Enter Trading Panel</button>
+      </div>
+    </div>
+
+    <!-- Config -->
+    <div class="card" id="configPanel" style="display:none;">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Trading Configuration</div>
+          <div class="card-subtitle">Bot parameters, execution mode, and market defaults</div>
+        </div>
+      </div>
+      <div class="config-grid">
+        <div class="form-group" style="grid-column:1/-1;">
+          <label>API Wallet Private Key</label>
+          <input type="password" id="cfgPrivateKey" placeholder="Auto-filled or enter manually" />
+        </div>
+        <div class="form-group" style="grid-column:1/-1;">
+          <label>Subaccount Address</label>
+          <input type="text" id="cfgSubaccount" placeholder="0x..." />
+        </div>
+        <input type="hidden" id="cfgBearerToken" />
+        <div class="form-group" style="grid-column:1/-1;">
+          <label>Strategy</label>
+          <select id="cfgStrategy" onchange="toggleStrategyFields()">
+            <option value="grid">Grid Trading</option>
+            <option value="spread">Spread Volume</option>
+            <option value="manual">Manual Trade</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Market</label>
+          <select id="cfgMarket" onchange="handleMarketChange(this.value)">
+            <option value="BTC/USD">BTC/USD</option>
+            <option value="ETH/USD">ETH/USD</option>
+            <option value="APT/USD">APT/USD</option>
+            <option value="SOL/USD">SOL/USD</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Order Size (USD)</label>
+          <input type="number" id="cfgOrderSizeUsd" value="10" step="1" min="1" />
+        </div>
+        <div class="form-group">
+          <label>Direction</label>
+          <select id="cfgDirection">
+            <option value="Both">Both</option>
+            <option value="Long_Only">Long Only</option>
+            <option value="Short_Only">Short Only</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Volume Target (USD, 0=unlimited)</label>
+          <input type="number" id="cfgVolumeLimit" value="0" min="0" />
+        </div>
+        <div class="form-group strategy-spread">
+          <label>Stale Order Timeout (sec)</label>
+          <input type="number" id="cfgStaleOrderTimeoutSec" value="20" min="1" step="1" />
+        </div>
+        <div class="form-group strategy-spread" style="display:none;">
+          <label>Price Offset (USD)</label>
+          <input type="number" id="cfgPriceOffset" value="10" min="1" />
+        </div>
+        <div class="form-group strategy-grid">
+          <label>Upper Price (USD)</label>
+          <input type="number" id="cfgUpperPrice" value="90000" step="100" min="1" />
+        </div>
+        <div class="form-group strategy-grid">
+          <label>Lower Price (USD)</label>
+          <input type="number" id="cfgLowerPrice" value="80000" step="100" min="1" />
+        </div>
+        <div class="form-group strategy-grid">
+          <label>Grid Levels</label>
+          <input type="number" id="cfgGridCount" value="10" min="2" max="50" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Decibel Perps (like Yield AI cards) -->
+    <div class="card" id="perpsSection">
+      <div class="card-header" style="margin-bottom:14px;">
+        <div>
+          <div class="card-title">Decibel Perps</div>
+          <div class="card-subtitle">Select a market to drive the chart and trading terminal</div>
+        </div>
+        <span style="font-size:12px;color:var(--text-dim);">Live mark prices</span>
+      </div>
+      <div class="perps-grid" id="perpsGrid">
+        <div class="perp-card" data-market="BTC/USD">
+          <div class="perp-card-header">
+            <div class="perp-card-pair">
+              <div class="pair-icon" style="background:#f7931a;color:#fff;">B</div>
+              BTC/USD
+            </div>
+            <span class="perp-card-badge">Decibel</span>
+          </div>
+          <div class="perp-card-price" id="priceBTC">--</div>
+          <div class="perp-card-sub">Mark price</div>
+          <div class="perp-card-btn" onclick="selectMarket('BTC/USD')">Select Market</div>
+        </div>
+        <div class="perp-card" data-market="ETH/USD">
+          <div class="perp-card-header">
+            <div class="perp-card-pair">
+              <div class="pair-icon" style="background:#627eea;color:#fff;">E</div>
+              ETH/USD
+            </div>
+            <span class="perp-card-badge">Decibel</span>
+          </div>
+          <div class="perp-card-price" id="priceETH">--</div>
+          <div class="perp-card-sub">Mark price</div>
+          <div class="perp-card-btn" onclick="selectMarket('ETH/USD')">Select Market</div>
+        </div>
+        <div class="perp-card" data-market="APT/USD">
+          <div class="perp-card-header">
+            <div class="perp-card-pair">
+              <div class="pair-icon" style="background:#2dd4bf;color:#fff;">A</div>
+              APT/USD
+            </div>
+            <span class="perp-card-badge">Decibel</span>
+          </div>
+          <div class="perp-card-price" id="priceAPT">--</div>
+          <div class="perp-card-sub">Mark price</div>
+          <div class="perp-card-btn" onclick="selectMarket('APT/USD')">Select Market</div>
+        </div>
+        <div class="perp-card" data-market="SOL/USD">
+          <div class="perp-card-header">
+            <div class="perp-card-pair">
+              <div class="pair-icon" style="background:#9945ff;color:#fff;">S</div>
+              SOL/USD
+            </div>
+            <span class="perp-card-badge">Decibel</span>
+          </div>
+          <div class="perp-card-price" id="priceSOL">--</div>
+          <div class="perp-card-sub">Mark price</div>
+          <div class="perp-card-btn" onclick="selectMarket('SOL/USD')">Select Market</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card trade-terminal" id="manualTradePanel" style="display:none;">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Trade Terminal</div>
+          <div class="card-subtitle">Manual execution ticket for the selected Decibel market</div>
+        </div>
+        <div class="card-subtitle">Click a market card to switch the terminal</div>
+      </div>
+      <input type="hidden" id="manualAction" value="open" />
+      <input type="hidden" id="manualSide" value="buy" />
+      <input type="hidden" id="manualOrderType" value="market" />
+      <div class="trade-terminal-shell">
+        <div class="trade-market-panel">
+          <div class="trade-market-toolbar">
+            <select class="trade-toolbar-select" id="tradeViewInterval" onchange="setTradeViewInterval(this.value)">
+              <option value="1m">1m</option>
+              <option value="5m">5m</option>
+              <option value="15m">15m</option>
+              <option value="1h" selected>1h</option>
+              <option value="4h">4h</option>
+            </select>
+            <div class="trade-toolbar-chip">Decibel Perps</div>
+            <div class="trade-toolbar-chip" id="tradeFundingChip">Funding: --</div>
+          </div>
+          <div class="trade-market-head">
+            <div class="trade-market-title">
+              <div class="trade-market-icon" id="tradeTerminalIcon" style="background:#f7931a;">B</div>
+              <div>
+                <div class="trade-market-name" id="tradeTerminalMarket">BTC/USD</div>
+                <div class="trade-market-sub">Decibel Perpetual Trading Terminal</div>
+              </div>
+            </div>
+            <div>
+              <div class="trade-market-price" id="tradeTerminalPrice">--</div>
+              <div class="trade-market-price-sub">Live Decibel mark price</div>
+            </div>
+          </div>
+          <div class="trade-market-stats">
+            <div class="trade-mini-stat">
+              <div class="trade-mini-label">Selected Market</div>
+              <div class="trade-mini-value" id="tradeTerminalMarketMini">BTC/USD</div>
+            </div>
+            <div class="trade-mini-stat">
+              <div class="trade-mini-label">Execution Type</div>
+              <div class="trade-mini-value" id="tradeTerminalTypeMini">Market</div>
+            </div>
+            <div class="trade-mini-stat">
+              <div class="trade-mini-label">Intent</div>
+              <div class="trade-mini-value" id="tradeTerminalIntentMini">Open Long</div>
+            </div>
+            <div class="trade-mini-stat">
+              <div class="trade-mini-label">Leverage</div>
+              <div class="trade-mini-value" id="tradeLeverageMini">1x</div>
+            </div>
+          </div>
+          <div class="trade-market-stage">
+            <div class="trade-stage-overlay">
+              <div class="trade-stage-breadcrumb">
+                <div class="trade-stage-symbol" id="tradeStageSymbol">BTC/USD</div>
+                <div class="trade-stage-badges">
+                  <div class="trade-stage-badge" id="tradeStageTypeBadge">Market</div>
+                  <div class="trade-stage-badge" id="tradeStageIntentBadge">Open Long</div>
+                </div>
+              </div>
+              <div class="trade-stage-center">
+                <div class="trade-stage-price" id="tradeStagePrice">--</div>
+                <div class="trade-stage-caption">
+                  <span class="trade-stage-line"></span>
+                  <span id="tradeStageCaption">Live Decibel mark price for active market</span>
+                </div>
+              </div>
+              <div class="trade-stage-footer">
+                <div class="trade-market-note">
+                  This ticket submits directly to Decibel. Limit orders can remain resting on the book before the frontend observes them.
+                </div>
+              </div>
+              <div class="trade-stage-history">
+                <div class="trade-stage-history-head">
+                  <div class="trade-stage-history-title">Market Chart</div>
+                  <div class="trade-stage-history-sub">Live candle view for the selected market</div>
+                </div>
+                <div class="trade-stage-chart" id="chartContainer"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="trade-order-panel">
+          <div class="trade-order-topbar">
+            <div>
+              <div class="trade-order-title">Open position</div>
+              <div class="trade-order-sub">Exchange-style order ticket for the selected market</div>
+            </div>
+            <div class="trade-order-chip" id="tradeBuilderChip">Builder fee ready</div>
+          </div>
+          <div class="trade-order-balance">
+            <div>
+              <div class="trade-order-balance-label">Available to trade</div>
+            </div>
+            <div class="trade-order-balance-value" id="tradeAvailableBalance">$0.00</div>
+          </div>
+          <div class="trade-position-card">
+            <div class="trade-position-head">
+              <div class="trade-position-title">Current Position</div>
+              <div class="trade-position-badge" id="tradePositionBadge">Flat</div>
+            </div>
+            <div class="trade-position-grid">
+              <div class="trade-position-stat">
+                <div class="trade-position-stat-label">Size</div>
+                <div class="trade-position-stat-value" id="tradePositionSize">--</div>
+              </div>
+              <div class="trade-position-stat">
+                <div class="trade-position-stat-label">Entry</div>
+                <div class="trade-position-stat-value" id="tradePositionEntry">--</div>
+              </div>
+              <div class="trade-position-stat">
+                <div class="trade-position-stat-label">Mark</div>
+                <div class="trade-position-stat-value" id="tradePositionMark">--</div>
+              </div>
+              <div class="trade-position-stat">
+                <div class="trade-position-stat-label">PnL</div>
+                <div class="trade-position-stat-value" id="tradePositionPnl">--</div>
+              </div>
+            </div>
+            <div class="trade-position-toolbar">
+              <button class="trade-position-action" type="button" onclick="manualCloseAll()">Close Position</button>
+              <button class="trade-position-action" type="button" onclick="manualCancelAll()">Cancel Orders</button>
+            </div>
+          </div>
+          <div class="trade-ticket-section">
+            <div class="trade-ticket-section-head">
+              <div class="trade-ticket-section-title">Order Setup</div>
+              <div class="trade-order-chip" id="tradeActionChip">Open Long</div>
+            </div>
+            <div class="trade-toggle-stack">
+              <div class="trade-toggle-group">
+                <div class="trade-toggle-label">Position Intent</div>
+                <div class="trade-toggle-buttons">
+                  <button class="trade-toggle-btn active" id="manualActionOpenBtn" onclick="setManualAction('open')">Open</button>
+                  <button class="trade-toggle-btn" id="manualActionCloseBtn" onclick="setManualAction('close')">Close</button>
+                </div>
+              </div>
+              <div class="trade-toggle-group">
+                <div class="trade-toggle-label">Direction</div>
+                <div class="trade-toggle-buttons">
+                  <button class="trade-toggle-btn long active" id="manualSideBuyBtn" onclick="setManualSide('buy')">Buy / Long</button>
+                  <button class="trade-toggle-btn short" id="manualSideSellBtn" onclick="setManualSide('sell')">Sell / Short</button>
+                </div>
+              </div>
+              <div class="trade-toggle-group">
+                <div class="trade-toggle-label">Execution</div>
+                <div class="trade-toggle-buttons">
+                  <button class="trade-toggle-btn active" id="manualTypeMarketBtn" onclick="setManualOrderType('market')">Market</button>
+                  <button class="trade-toggle-btn" id="manualTypeLimitBtn" onclick="setManualOrderType('limit')">Limit</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="trade-ticket-section">
+            <div class="trade-ticket-section-head">
+              <div class="trade-ticket-section-title">Order Inputs</div>
+              <div class="trade-order-chip" id="tradeExecutionChip">Market</div>
+            </div>
+            <div class="trade-ticket-grid">
+              <div class="trade-inline-grid">
+                <div class="trade-field">
+                  <label>Order type</label>
+                  <select id="manualOrderTypeSelect" onchange="setManualOrderType(this.value)">
+                    <option value="market">Market</option>
+                    <option value="limit">Limit</option>
+                  </select>
+                </div>
+                <div class="trade-field">
+                  <label>Leverage</label>
+                  <select id="manualLeverage" onchange="refreshTradeTerminalState()">
+                    <option value="1x">1x</option>
+                    <option value="2x">2x</option>
+                    <option value="5x" selected>5x</option>
+                    <option value="10x">10x</option>
+                  </select>
+                </div>
+              </div>
+              <div class="trade-field manual-limit-row" style="display:none;">
+                <label>Limit Price</label>
+                <input type="number" id="manualPrice" step="0.0001" min="0" placeholder="Enter limit price" />
+              </div>
+              <div class="trade-field">
+                <label>Size (Coin)</label>
+                <input type="number" id="manualSize" step="0.0001" min="0" placeholder="0.001" />
+              </div>
+              <div class="trade-field">
+                <label>Order Size (USD)</label>
+                <input type="number" id="manualOrderSizeUsd" step="1" min="0" placeholder="Use if coin size left empty" />
+              </div>
+              <div class="trade-size-quick">
+                <button class="trade-size-chip" type="button" onclick="setManualUsdSize(10)">$10</button>
+                <button class="trade-size-chip" type="button" onclick="setManualUsdSize(25)">$25</button>
+                <button class="trade-size-chip" type="button" onclick="setManualUsdSize(50)">$50</button>
+                <button class="trade-size-chip" type="button" onclick="setManualUsdSize(100)">$100</button>
+              </div>
+            </div>
+          </div>
+          <div class="trade-ticket-actions">
+            <button class="trade-submit-btn" id="manualSubmitBtn" onclick="submitManualOrder()">Open Long Market</button>
+          </div>
+          <div class="trade-terminal-result" id="manualTradeResult"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dashboard Positions -->
+    <div class="card table-card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Open Positions</div>
+          <div class="card-subtitle">Positions for the currently connected subaccount</div>
+        </div>
+      </div>
+      <table class="orders-table">
+        <thead>
+          <tr><th>Market</th><th>Side</th><th>Size</th><th>Entry Price</th><th>Mark Price</th><th>PnL</th><th>Liq. Price</th></tr>
+        </thead>
+        <tbody id="dashboardPositionsBody">
+          <tr><td colspan="7" class="empty-state">Connect wallet to view positions</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Active Orders & Log -->
+    <div class="ops-grid">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Active Orders</div>
+            <div class="card-subtitle">Current staged orders from the running strategy</div>
+          </div>
+        </div>
+        <div id="orderCards">
+          <div class="empty-state">Waiting to start...</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Logs</div>
+            <div class="card-subtitle">Execution events, fills, and system output</div>
+          </div>
+        </div>
+        <div class="log-content" id="logContent">
+          <div class="log-entry" style="color:var(--text-dim)">Waiting to start...</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Positions Tab -->
+  <div class="main-content" id="tabPositions" style="display:none;">
+    <div class="card table-card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Open Positions</div>
+          <div class="card-subtitle">Positions for the currently connected subaccount</div>
+        </div>
+      </div>
+      <table class="orders-table">
+        <thead>
+          <tr><th>Market</th><th>Side</th><th>Size</th><th>Entry Price</th><th>Mark Price</th><th>PnL</th><th>Liq. Price</th></tr>
+        </thead>
+        <tbody id="positionsBody">
+          <tr><td colspan="7" class="empty-state">Connect wallet to view positions</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- History Tab -->
+  <div class="main-content" id="tabHistory" style="display:none;">
+    <div class="card table-card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Trade History</div>
+          <div class="card-subtitle">Recent orders captured by the frontend session</div>
+        </div>
+      </div>
+      <table class="orders-table">
+        <thead>
+          <tr><th>Time</th><th>Market</th><th>Side</th><th>Price</th><th>Size</th><th>Status</th><th>Order ID</th></tr>
+        </thead>
+        <tbody id="historyBody">
+          <tr><td colspan="7" class="empty-state">Connect wallet to view history</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+  // ========== State ==========
+  let connectedWallet = null;
+  let walletProvider = null;
+  let ws = null;
+  let currentStatus = null;
+  let platformConfig = null;
+  let latestMarketPrices = {};
+  let latestPositions = [];
+
+  function positionSizeOf(p) {
+    return Number(p?.size ?? p?.position_size ?? 0);
+  }
+
+  function normalizePosition(p) {
+    return {
+      market_name: p?.market_name || p?.market || '--',
+      size: positionSizeOf(p),
+      entry_price: Number(p?.entry_price || 0),
+      mark_price: Number(p?.mark_price || 0),
+      unrealized_pnl: Number(p?.unrealized_pnl || 0),
+      estimated_liquidation_price: Number(p?.estimated_liquidation_price || 0),
+    };
+  }
+
+  function renderCurrentMarketPosition() {
+    const market = document.getElementById('cfgMarket')?.value || 'BTC/USD';
+    const badge = document.getElementById('tradePositionBadge');
+    const sizeEl = document.getElementById('tradePositionSize');
+    const entryEl = document.getElementById('tradePositionEntry');
+    const markEl = document.getElementById('tradePositionMark');
+    const pnlEl = document.getElementById('tradePositionPnl');
+    if (!badge || !sizeEl || !entryEl || !markEl || !pnlEl) return;
+
+    const position = (latestPositions || []).map(normalizePosition).find((p) => p.market_name === market && Math.abs(p.size) > 0.0000001);
+    if (!position) {
+      badge.className = 'trade-position-badge';
+      badge.textContent = 'Flat';
+      sizeEl.textContent = '--';
+      entryEl.textContent = '--';
+      markEl.textContent = latestMarketPrices[market]
+        ? `$${Number(latestMarketPrices[market]).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        : '--';
+      pnlEl.textContent = '--';
+      pnlEl.style.color = 'var(--text)';
+      return;
+    }
+
+    const isLong = position.size > 0;
+    badge.className = `trade-position-badge ${isLong ? 'long' : 'short'}`;
+    badge.textContent = isLong ? 'Long' : 'Short';
+    sizeEl.textContent = `${Math.abs(position.size).toFixed(4)} ${market.split('/')[0]}`;
+    entryEl.textContent = `$${position.entry_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    markEl.textContent = `$${position.mark_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    pnlEl.textContent = `${position.unrealized_pnl >= 0 ? '+' : ''}$${position.unrealized_pnl.toFixed(4)}`;
+    pnlEl.style.color = position.unrealized_pnl >= 0 ? 'var(--green)' : 'var(--red)';
+  }
+  const marketMetaMap = {
+    'BTC/USD': { icon: 'B', color: '#f7931a' },
+    'ETH/USD': { icon: 'E', color: '#627eea' },
+    'APT/USD': { icon: 'A', color: '#2dd4bf' },
+    'SOL/USD': { icon: 'S', color: '#9945ff' },
+  };
+
+  function toggleStrategyFields() {
+    const strategy = document.getElementById('cfgStrategy').value;
+    document.querySelectorAll('.strategy-spread').forEach(el => el.style.display = strategy === 'spread' ? '' : 'none');
+    document.querySelectorAll('.strategy-grid').forEach(el => el.style.display = strategy === 'grid' ? '' : 'none');
+    const manualPanel = document.getElementById('manualTradePanel');
+    if (manualPanel) manualPanel.style.display = strategy === 'manual' ? '' : (connectedWallet ? '' : 'none');
+    if (!currentStatus?.running) {
+      document.getElementById('statStrategySidebar').textContent =
+        strategy === 'grid' ? 'Grid' : strategy === 'spread' ? 'Spread' : 'Manual';
+      const isGrid = strategy === 'grid';
+      document.getElementById('gridTargetRow').style.display = isGrid ? '' : 'none';
+      document.getElementById('gridActiveRow').style.display = isGrid ? '' : 'none';
+      document.getElementById('gridSplitRow').style.display = isGrid ? '' : 'none';
+      document.getElementById('statGridTargetSidebar').textContent = isGrid ? String(document.getElementById('cfgGridCount').value || '--') : '--';
+      document.getElementById('statGridActiveSidebar').textContent = isGrid ? '0' : '--';
+      document.getElementById('statGridSplitSidebar').textContent = isGrid ? '0 / 0' : '--';
+    }
+  }
+
+  function toggleManualTradeFields() {
+    const orderType = document.getElementById('manualOrderType').value;
+    document.querySelectorAll('.manual-limit-row').forEach(el => el.style.display = orderType === 'limit' ? '' : 'none');
+    const selectEl = document.getElementById('manualOrderTypeSelect');
+    if (selectEl) selectEl.value = orderType;
+    refreshTradeTerminalState();
+  }
+
+  function refreshTradeTerminalState() {
+    const market = document.getElementById('cfgMarket').value;
+    const action = document.getElementById('manualAction').value;
+    const side = document.getElementById('manualSide').value;
+    const orderType = document.getElementById('manualOrderType').value;
+    const leverage = document.getElementById('manualLeverage')?.value || '5x';
+    const meta = marketMetaMap[market] || { icon: market[0], color: '#111827' };
+    const selectedPrice = latestMarketPrices[market];
+    const intent = `${action === 'open' ? 'Open' : 'Close'} ${side === 'buy' ? 'Long' : 'Short'}`;
+
+    const iconEl = document.getElementById('tradeTerminalIcon');
+    if (iconEl) {
+      iconEl.textContent = meta.icon;
+      iconEl.style.background = meta.color;
+    }
+    document.getElementById('tradeTerminalMarket').textContent = market;
+    document.getElementById('tradeTerminalMarketMini').textContent = market;
+    document.getElementById('tradeTerminalTypeMini').textContent = orderType === 'market' ? 'Market' : 'Limit';
+    document.getElementById('tradeTerminalIntentMini').textContent = intent;
+    document.getElementById('tradeLeverageMini').textContent = leverage;
+    const actionChip = document.getElementById('tradeActionChip');
+    const executionChip = document.getElementById('tradeExecutionChip');
+    if (actionChip) actionChip.textContent = intent;
+    if (executionChip) executionChip.textContent = orderType === 'market' ? 'Market' : 'Limit';
+    document.getElementById('tradeTerminalPrice').textContent = selectedPrice
+      ? '$' + Number(selectedPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : '--';
+    document.getElementById('tradeStageSymbol').textContent = market;
+    document.getElementById('tradeStageTypeBadge').textContent = orderType === 'market' ? 'Market' : 'Limit';
+    document.getElementById('tradeStageIntentBadge').textContent = intent;
+    document.getElementById('tradeStagePrice').textContent = selectedPrice
+      ? '$' + Number(selectedPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : '--';
+    document.getElementById('tradeStageCaption').textContent = `Live Decibel mark price for ${market}`;
+    renderCurrentMarketPosition();
+
+    document.getElementById('manualActionOpenBtn').classList.toggle('active', action === 'open');
+    document.getElementById('manualActionCloseBtn').classList.toggle('active', action === 'close');
+    document.getElementById('manualSideBuyBtn').classList.toggle('active', side === 'buy');
+    document.getElementById('manualSideSellBtn').classList.toggle('active', side === 'sell');
+    document.getElementById('manualTypeMarketBtn').classList.toggle('active', orderType === 'market');
+    document.getElementById('manualTypeLimitBtn').classList.toggle('active', orderType === 'limit');
+
+    const submitBtn = document.getElementById('manualSubmitBtn');
+    submitBtn.textContent = `${action === 'open' ? 'Open' : 'Close'} ${side === 'buy' ? 'Long' : 'Short'} ${orderType === 'market' ? 'Market' : 'Limit'}`;
+    submitBtn.classList.toggle('short', side === 'sell');
+
+    document.querySelectorAll('#perpsGrid .perp-card').forEach(card => {
+      card.classList.toggle('active', card.dataset.market === market);
+    });
+  }
+
+  function setManualAction(action) {
+    document.getElementById('manualAction').value = action;
+    refreshTradeTerminalState();
+  }
+
+  function setManualSide(side) {
+    document.getElementById('manualSide').value = side;
+    refreshTradeTerminalState();
+  }
+
+  function setManualOrderType(orderType) {
+    document.getElementById('manualOrderType').value = orderType;
+    toggleManualTradeFields();
+  }
+
+  function setManualUsdSize(amount) {
+    document.getElementById('manualSize').value = '';
+    document.getElementById('manualOrderSizeUsd').value = amount;
+  }
+
+  // ========== Wallet Standard Discovery ==========
+  let standardWallets = [];
+  function registerWallets(...wallets) {
+    for (const w of wallets) {
+      if (!standardWallets.find(sw => sw.name === w.name)) { standardWallets.push(w); }
+    }
+  }
+  window.addEventListener('wallet-standard:register-wallet', (e) => {
+    const callback = e.detail;
+    if (typeof callback === 'function') callback(registerWallets);
+  });
+  function emitAppReady() {
+    try { window.dispatchEvent(new CustomEvent('wallet-standard:app-ready', { detail: { register: registerWallets } })); } catch(e) {}
+  }
+  emitAppReady();
+  setTimeout(emitAppReady, 500);
+  setTimeout(emitAppReady, 1500);
+
+  // ========== Wallet Connection ==========
+  function handleWalletClick() {
+    if (connectedWallet) disconnectWallet();
+    else document.getElementById('walletOverlay').classList.remove('hidden');
+  }
+
+  let okxLegacyProvider = null;
+
+  async function connectWallet(type) {
+    const nameMap = { petra: 'Petra', martian: 'Martian', pontem: 'Pontem', okx: 'OKX Wallet' };
+    const walletName = nameMap[type] || type;
+
+    if (type === 'okx') {
+      try {
+        if (!window.okxwallet?.aptos) { alert('OKX Wallet not detected.'); return; }
+        const res = await window.okxwallet.aptos.connect();
+        if (!res.address?.startsWith('0x')) throw new Error('No Aptos address');
+        okxLegacyProvider = window.okxwallet.aptos;
+        walletProvider = null;
+        onWalletConnected(res.address);
+        return;
+      } catch (err) { alert('OKX connection failed: ' + (err.message || err)); return; }
+    }
+
+    emitAppReady();
+    function findWallet(name) {
+      return standardWallets.find(w => w.name === name) || standardWallets.find(w => w.name.toLowerCase().includes(name.toLowerCase()));
+    }
+    let stdWallet = findWallet(walletName);
+    if (!stdWallet) {
+      await new Promise(r => setTimeout(r, 800));
+      emitAppReady();
+      await new Promise(r => setTimeout(r, 200));
+      stdWallet = findWallet(walletName);
+    }
+    if (!stdWallet) { alert(`${walletName} not detected.\nFound: ${standardWallets.map(w=>w.name).join(', ')||'none'}`); return; }
+
+    try {
+      const connectFeature = stdWallet.features['aptos:connect'] || stdWallet.features['standard:connect'] || stdWallet.features['connect'];
+      let account;
+      if (connectFeature) {
+        const res = await connectFeature.connect();
+        const accounts = res.accounts || (res.account ? [res.account] : []);
+        account = accounts.find(a => a.chains?.some(c => c.startsWith('aptos:'))) || accounts.find(a => String(a.address).startsWith('0x')) || accounts[0];
+        if (!account && stdWallet.accounts?.length) account = stdWallet.accounts.find(a => String(a.address).startsWith('0x'));
+      } else if (stdWallet.accounts?.length) {
+        account = stdWallet.accounts.find(a => String(a.address).startsWith('0x'));
+      }
+      if (!account) throw new Error('No Aptos account');
+      let addr = typeof account.address === 'string' ? account.address : String(account.address);
+      if (!addr.startsWith('0x')) throw new Error('Not Aptos address');
+      okxLegacyProvider = null;
+      walletProvider = stdWallet;
+      onWalletConnected(addr);
+    } catch (err) { alert('Connection failed: ' + (err.message || err)); }
+  }
+
+  function connectManual() {
+    const addr = document.getElementById('manualWallet').value.trim();
+    if (!addr?.startsWith('0x')) { alert('Invalid address'); return; }
+    onWalletConnected(addr);
+  }
+
+  function onWalletConnected(address) {
+    connectedWallet = address;
+    document.getElementById('walletOverlay').classList.add('hidden');
+    document.getElementById('mainContent').style.display = 'flex';
+
+    const btn = document.getElementById('walletBtn');
+    btn.textContent = address.slice(0, 6) + '...' + address.slice(-4);
+    btn.classList.add('connected');
+
+    const badge = document.getElementById('statusBadge');
+    badge.textContent = 'CONNECTED';
+    badge.className = 'badge badge-connected';
+
+    connectWebSocket();
+    checkOnboardStatus();
+    fetchAccountInfo();
+    loadPositions();
+    setTimeout(initChart, 500);
+    toggleStrategyFields();
+  }
+
+  function disconnectWallet() {
+    if (ws) { ws.close(); ws = null; }
+    try { if (okxLegacyProvider) okxLegacyProvider.disconnect?.(); else walletProvider?.features?.['aptos:disconnect']?.disconnect(); } catch(e) {}
+    connectedWallet = null; walletProvider = null; okxLegacyProvider = null; currentStatus = null;
+    document.getElementById('walletBtn').textContent = 'Connect Wallet';
+    document.getElementById('walletBtn').classList.remove('connected');
+    document.getElementById('statusBadge').textContent = 'OFFLINE';
+    document.getElementById('statusBadge').className = 'badge badge-stopped';
+    document.getElementById('mainContent').style.display = 'none';
+    document.getElementById('manualTradePanel').style.display = 'none';
+  }
+
+  // ========== WebSocket ==========
+  function connectWebSocket() {
+    if (!connectedWallet) return;
+    if (ws) ws.close();
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    ws = new WebSocket(`${proto}://${location.host}?wallet=${encodeURIComponent(connectedWallet)}`);
+    ws.onmessage = (e) => {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'status') updateStatus(msg.data);
+      if (msg.type === 'log') appendLog(msg.data);
+      if (msg.type === 'logs') msg.data.forEach(l => appendLog(l));
+    };
+    ws.onclose = () => { if (connectedWallet) setTimeout(connectWebSocket, 3000); };
+    ws.onerror = () => ws.close();
+  }
+
+  async function parseJsonResponse(res) {
+    const text = await res.text();
+    if (!text) return {};
+    try {
+      return JSON.parse(text);
+    } catch {
+      throw new Error(text.slice(0, 200) || 'Invalid JSON response');
+    }
+  }
+
+  async function requestJson(url, options) {
+    const res = await fetch(url, options);
+    const data = await parseJsonResponse(res);
+    return { res, data };
+  }
+
+  function formatNetValue(value) {
+    const n = Number(value);
+    return Number.isFinite(n) ? n.toFixed(6) : '0.000000';
+  }
+
+  // ========== Bot Controls ==========
+  async function startBot() {
+    document.getElementById('btnStart').disabled = true;
+    try {
+      let privateKey = document.getElementById('cfgPrivateKey').value.trim();
+      let subaccount = document.getElementById('cfgSubaccount').value.trim();
+      if (!privateKey || !subaccount) {
+        const { data: wd } = await requestJson(`/api/onboard/api-wallet/${connectedWallet}`);
+        if (wd.exists && !privateKey) privateKey = wd.apiWalletPrivateKey;
+        if (!subaccount) {
+          const { data: sd } = await requestJson(`/api/onboard/subaccounts/${connectedWallet}`);
+          const ls = sd.subaccounts?.[sd.subaccounts.length - 1];
+          subaccount = ls?.address || ls?.subaccount_address || '';
+        }
+      }
+      if (!privateKey) { alert('API wallet not ready'); document.getElementById('btnStart').disabled = false; return; }
+      if (!subaccount) { alert('Subaccount not created'); document.getElementById('btnStart').disabled = false; return; }
+
+      const strategy = document.getElementById('cfgStrategy').value;
+      const params = {
+        walletAddress: connectedWallet, apiWalletPrivateKey: privateKey,
+        subaccountAddress: subaccount, bearerToken: document.getElementById('cfgBearerToken').value.trim(),
+        marketName: document.getElementById('cfgMarket').value,
+        orderSizeUsd: Number(document.getElementById('cfgOrderSizeUsd').value),
+        direction: document.getElementById('cfgDirection').value,
+        totalVolumeLimit: Number(document.getElementById('cfgVolumeLimit').value),
+        staleOrderTimeoutMs: Number(document.getElementById('cfgStaleOrderTimeoutSec').value) * 1000,
+        strategy,
+      };
+      if (strategy === 'spread') params.priceOffset = Number(document.getElementById('cfgPriceOffset').value);
+      else if (strategy === 'grid') {
+        params.upperPrice = Number(document.getElementById('cfgUpperPrice').value);
+        params.lowerPrice = Number(document.getElementById('cfgLowerPrice').value);
+        params.gridCount = Number(document.getElementById('cfgGridCount').value);
+      }
+      const { res, data } = await requestJson('/api/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(params) });
+      if (!res.ok) { alert(data.error || 'Failed'); document.getElementById('btnStart').disabled = false; }
+    } catch (err) { alert('Error: ' + err.message); document.getElementById('btnStart').disabled = false; }
+  }
+
+  async function stopBot() {
+    document.getElementById('btnStop').disabled = true;
+    try {
+      const { res, data } = await requestJson('/api/stop', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ walletAddress: connectedWallet }) });
+      if (res.ok) { document.getElementById('btnStart').disabled = false; document.getElementById('btnStop').disabled = true; document.getElementById('configPanel').style.display = ''; currentStatus = null; }
+      else throw new Error(data.error || 'Failed');
+    } catch (err) { alert('Error: ' + err.message); document.getElementById('btnStop').disabled = false; }
+  }
+
+  async function submitManualOrder() {
+    const resultEl = document.getElementById('manualTradeResult');
+    resultEl.className = 'onboard-result';
+    resultEl.textContent = 'Submitting...';
+    try {
+      let privateKey = document.getElementById('cfgPrivateKey').value.trim();
+      let subaccount = document.getElementById('cfgSubaccount').value.trim();
+      if (!privateKey || !subaccount) {
+        const { data: wd } = await requestJson(`/api/onboard/api-wallet/${connectedWallet}`);
+        if (wd.exists && !privateKey) privateKey = wd.apiWalletPrivateKey;
+        if (!subaccount) {
+          const { data: sd } = await requestJson(`/api/onboard/subaccounts/${connectedWallet}`);
+          const ls = sd.subaccounts?.[sd.subaccounts.length - 1];
+          subaccount = ls?.address || ls?.subaccount_address || '';
+        }
+      }
+      if (!privateKey || !subaccount) throw new Error('API wallet 或子账户未准备好');
+
+      const sizeCoin = Number(document.getElementById('manualSize').value || 0);
+      const sizeUsd = Number(document.getElementById('manualOrderSizeUsd').value || 0);
+      if (sizeCoin > 0 && sizeUsd > 0) {
+        throw new Error('Size (Coin) 和 Order Size (USD) 只能填写一个');
+      }
+
+      const payload = {
+        apiWalletPrivateKey: privateKey,
+        bearerToken: document.getElementById('cfgBearerToken').value.trim(),
+        subaccountAddress: subaccount,
+        marketName: document.getElementById('cfgMarket').value,
+        action: document.getElementById('manualAction').value,
+        side: document.getElementById('manualSide').value,
+        orderType: document.getElementById('manualOrderType').value,
+        leverage: document.getElementById('manualLeverage').value,
+        price: Number(document.getElementById('manualPrice').value || 0),
+        size: sizeCoin,
+        orderSizeUsd: sizeUsd,
+      };
+
+      const { res, data } = await requestJson('/api/manual-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error(data.error || 'Manual order failed');
+      const actualSize = Number(data.actualSize || data.size || 0).toFixed(6);
+      const netText = `net ${formatNetValue(data.beforeNet)} -> ${formatNetValue(data.afterNet)}`;
+      const refParts = [];
+      if (data.marketName) refParts.push(data.marketName);
+      if (data.orderId) refParts.push(`order ${String(data.orderId).slice(0, 12)}...`);
+      if (data.transactionHash) refParts.push(`tx ${String(data.transactionHash).slice(0, 12)}...`);
+      const refText = refParts.length ? ` | ${refParts.join(' | ')}` : '';
+
+      if (data.orderType === 'market') {
+        if (data.fillConfirmed) {
+          resultEl.className = 'onboard-result success';
+          resultEl.textContent = `Filled: ${data.action} ${data.side} market | actual ${actualSize} | ${netText}${refText}`;
+        } else if (data.executionState === 'resting' || String(data.executionState || '').startsWith('history:')) {
+          resultEl.className = 'onboard-result info';
+          resultEl.textContent = `Order reached Decibel but not filled: ${data.action} ${data.side} market | state ${data.executionState} | actual ${actualSize} | ${netText}${refText}`;
+        } else if (data.orderId || data.transactionHash) {
+          resultEl.className = 'onboard-result info';
+          resultEl.textContent = `Order submitted to Decibel, awaiting sync: ${data.action} ${data.side} market | actual ${actualSize} | ${netText}${refText}`;
+        } else {
+          resultEl.className = 'onboard-result error';
+          resultEl.textContent = `Order not observed on Decibel: ${data.action} ${data.side} market | actual ${actualSize} | ${netText}${refText}`;
+        }
+      } else {
+        if (data.executionState === 'resting' || String(data.executionState || '').startsWith('history:') || data.orderId || data.transactionHash) {
+          resultEl.className = 'onboard-result success';
+          resultEl.textContent = `Limit order placed on Decibel: ${data.action} ${data.side} | actual ${actualSize} @ ${data.price}${refText}`;
+        } else {
+          resultEl.className = 'onboard-result error';
+          resultEl.textContent = `Limit order not observed on Decibel: ${data.action} ${data.side} | actual ${actualSize} @ ${data.price}${refText}`;
+        }
+      }
+      appendLog(`[手动交易] ${resultEl.textContent}`);
+      loadPositions();
+    } catch (err) {
+      resultEl.className = 'onboard-result error';
+      resultEl.textContent = `Error: ${err.message}`;
+    }
+  }
+
+  async function manualCloseAll() {
+    const resultEl = document.getElementById('manualTradeResult');
+    resultEl.className = 'onboard-result';
+    resultEl.textContent = 'Closing...';
+    try {
+      let privateKey = document.getElementById('cfgPrivateKey').value.trim();
+      let subaccount = document.getElementById('cfgSubaccount').value.trim();
+      if (!privateKey || !subaccount) {
+        const { data: wd } = await requestJson(`/api/onboard/api-wallet/${connectedWallet}`);
+        if (wd.exists && !privateKey) privateKey = wd.apiWalletPrivateKey;
+        if (!subaccount) {
+          const { data: sd } = await requestJson(`/api/onboard/subaccounts/${connectedWallet}`);
+          const ls = sd.subaccounts?.[sd.subaccounts.length - 1];
+          subaccount = ls?.address || ls?.subaccount_address || '';
+        }
+      }
+      if (!privateKey || !subaccount) throw new Error('API wallet 或子账户未准备好');
+      const { res, data } = await requestJson('/api/manual-close-all', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiWalletPrivateKey: privateKey,
+          bearerToken: document.getElementById('cfgBearerToken').value.trim(),
+          subaccountAddress: subaccount,
+          marketName: document.getElementById('cfgMarket').value,
+        }),
+      });
+      if (!res.ok) throw new Error(data.error || 'Close failed');
+      resultEl.className = 'onboard-result success';
+      resultEl.textContent = data.message || (
+        data.fillConfirmed
+          ? `Close filled: net ${formatNetValue(data.beforeNet)} -> ${formatNetValue(data.afterNet)}`
+          : `Close submitted but not filled: net ${formatNetValue(data.beforeNet)} -> ${formatNetValue(data.afterNet)}`
+      );
+      appendLog(`[手动平仓] ${resultEl.textContent}`);
+      loadPositions();
+    } catch (err) {
+      resultEl.className = 'onboard-result error';
+      resultEl.textContent = `Error: ${err.message}`;
+    }
+  }
+
+  async function manualCancelAll() {
+    const resultEl = document.getElementById('manualTradeResult');
+    resultEl.className = 'onboard-result';
+    resultEl.textContent = 'Cancelling...';
+    try {
+      let privateKey = document.getElementById('cfgPrivateKey').value.trim();
+      let subaccount = document.getElementById('cfgSubaccount').value.trim();
+      if (!privateKey || !subaccount) {
+        const { data: wd } = await requestJson(`/api/onboard/api-wallet/${connectedWallet}`);
+        if (wd.exists && !privateKey) privateKey = wd.apiWalletPrivateKey;
+        if (!subaccount) {
+          const { data: sd } = await requestJson(`/api/onboard/subaccounts/${connectedWallet}`);
+          const ls = sd.subaccounts?.[sd.subaccounts.length - 1];
+          subaccount = ls?.address || ls?.subaccount_address || '';
+        }
+      }
+      if (!privateKey || !subaccount) throw new Error('API wallet 或子账户未准备好');
+      const { res, data } = await requestJson('/api/manual-cancel-all', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiWalletPrivateKey: privateKey,
+          bearerToken: document.getElementById('cfgBearerToken').value.trim(),
+          subaccountAddress: subaccount,
+          marketName: document.getElementById('cfgMarket').value,
+        }),
+      });
+      if (!res.ok) throw new Error(data.error || 'Cancel failed');
+      resultEl.className = 'onboard-result success';
+      resultEl.textContent = 'All orders cancelled for selected market';
+      appendLog('[手动撤单] 已撤销当前市场全部挂单');
+      loadPositions();
+    } catch (err) {
+      resultEl.className = 'onboard-result error';
+      resultEl.textContent = `Error: ${err.message}`;
+    }
+  }
+
+  // ========== UI Updates ==========
+  function updateStatus(status) {
+    currentStatus = status;
+    const running = status.running;
+    const strategyName = status.strategy === 'grid' ? 'Grid' : 'Spread';
+    const marketName = status.market || status.marketName || document.getElementById('cfgMarket')?.value || '--';
+
+    const badge = document.getElementById('statusBadge');
+    badge.textContent = running ? 'RUNNING' : 'CONNECTED';
+    badge.className = `badge ${running ? 'badge-running' : 'badge-connected'}`;
+
+    document.getElementById('btnStart').disabled = running;
+    document.getElementById('btnStop').disabled = !running;
+    document.getElementById('configPanel').style.display = running ? 'none' : '';
+
+    // Sidebar stats
+    document.getElementById('statMarketSidebar').textContent = marketName;
+    document.getElementById('statStrategySidebar').textContent = strategyName;
+    document.getElementById('statPriceSidebar').textContent = status.currentPrice ? `$${status.currentPrice.toLocaleString()}` : '--';
+    document.getElementById('statRoundsSidebar').textContent = status.totalRounds || 0;
+    document.getElementById('statVolumeSidebar').textContent = `$${(status.totalVolume || 0).toFixed(0)}`;
+    document.getElementById('statTargetSidebar').textContent = status.totalVolumeLimit > 0 ? `$${status.totalVolumeLimit.toLocaleString()}` : 'Unlimited';
+    document.getElementById('statProfitSidebar').textContent = `$${(status.totalProfit || 0).toFixed(4)}`;
+    document.getElementById('statUptime').textContent = formatUptime(status.uptime);
+
+    const isGrid = status.strategy === 'grid';
+    document.getElementById('gridTargetRow').style.display = isGrid ? '' : 'none';
+    document.getElementById('gridActiveRow').style.display = isGrid ? '' : 'none';
+    document.getElementById('gridSplitRow').style.display = isGrid ? '' : 'none';
+    if (isGrid) {
+      document.getElementById('statGridTargetSidebar').textContent = String(status.gridCount ?? '--');
+      document.getElementById('statGridActiveSidebar').textContent = `${status.totalOrders ?? 0}`;
+      document.getElementById('statGridSplitSidebar').textContent = `${status.activeBuyOrders ?? 0} / ${status.activeSellOrders ?? 0}`;
+    }
+
+    // Update active market price from bot status
+    if (status.currentPrice) {
+      const market = marketName;
+      const key = market.split('/')[0];
+      const el = document.getElementById('price' + key);
+      if (el) el.textContent = '$' + status.currentPrice.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+      latestMarketPrices[market] = Number(status.currentPrice);
+      refreshTradeTerminalState();
+    }
+
+    renderOrderCards(status);
+    renderOrders(status);
+    loadHistory();
+    updateOrderMarkers();
+  }
+
+  function formatUptime(ms) {
+    if (!ms) return '00:00:00';
+    const s = Math.floor(ms / 1000);
+    return [Math.floor(s/3600), Math.floor((s%3600)/60), s%60].map(v => String(v).padStart(2,'0')).join(':');
+  }
+
+  function renderOrderCards(status) {
+    const container = document.getElementById('orderCards');
+    const { buyOrder, sellOrder } = status;
+    if (!buyOrder && !sellOrder) { container.innerHTML = '<div class="empty-state">Waiting to start...</div>'; return; }
+
+    let html = '';
+    if (sellOrder) {
+      const st = {pending:'Pending',placed:'Active',filled:'Filled',error:'Cancelled'}[sellOrder.status] || sellOrder.status;
+      html += `<div class="order-card"><span class="order-side sell">SELL</span><span class="order-price">$${sellOrder.price.toFixed(2)}</span><span class="order-meta">${sellOrder.size}</span><span class="order-status"><span class="status-dot ${sellOrder.status}"></span>${st}</span></div>`;
+    }
+    if (buyOrder) {
+      const st = {pending:'Pending',placed:'Active',filled:'Filled',error:'Cancelled'}[buyOrder.status] || buyOrder.status;
+      html += `<div class="order-card"><span class="order-side buy">BUY</span><span class="order-price">$${buyOrder.price.toFixed(2)}</span><span class="order-meta">${buyOrder.size}</span><span class="order-status"><span class="status-dot ${buyOrder.status}"></span>${st}</span></div>`;
+    }
+    container.innerHTML = html;
+  }
+
+  function renderOrders(status) {
+    const tbody = document.getElementById('ordersBody');
+    const orders = [status.buyOrder, status.sellOrder].filter(Boolean);
+    if (!orders.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No orders</td></tr>'; return; }
+    tbody.innerHTML = orders.sort((a,b) => b.price - a.price).map(o => `
+      <tr>
+        <td style="color:${o.side==='buy'?'var(--green)':'var(--red)'};font-weight:700">${o.side==='buy'?'BUY':'SELL'}</td>
+        <td>$${o.price.toFixed(2)}</td><td>${o.size}</td>
+        <td><span class="status-dot ${o.status}"></span>${{pending:'Pending',placed:'Active',filled:'Filled',error:'Cancelled'}[o.status]||o.status}</td>
+        <td style="color:var(--text-dim);font-size:11px">${o.orderId?o.orderId.slice(0,16)+'...':'-'}</td>
+      </tr>`).join('');
+  }
+
+  function appendLog(text) {
+    const el = document.getElementById('logContent');
+    const div = document.createElement('div');
+    div.className = 'log-entry';
+    if (text.includes('成功')||text.includes('已成交')||text.includes('已启动')||text.includes('success')) div.className += ' success';
+    else if (text.includes('失败')||text.includes('异常')||text.includes('error')||text.includes('Error')) div.className += ' error';
+    else if (text.includes('限速')||text.includes('跳过')||text.includes('warn')) div.className += ' warn';
+    else if (text.includes('初始化')||text.includes('===')||text.includes('init')) div.className += ' info';
+    div.textContent = text;
+    el.appendChild(div);
+    while (el.children.length > 200) el.removeChild(el.firstChild);
+    el.scrollTop = el.scrollHeight;
+  }
+
+  // ========== Onboarding ==========
+  let onboardState = { registered: false, hasSubaccount: false, subaccountAddr: '' };
+  let accountRefreshTimer = null;
+
+  async function fetchAccountInfo() {
+    if (!connectedWallet) return;
+    try {
+      const { data } = await requestJson(`/api/account/${connectedWallet}`);
+      document.getElementById('statBalance').textContent = `$${Number(data.balance || 0).toFixed(2)}`;
+      document.getElementById('statAmps').textContent = Number(data.amps || 0).toFixed(2);
+      const tradeBalanceEl = document.getElementById('tradeAvailableBalance');
+      if (tradeBalanceEl) tradeBalanceEl.textContent = `$${Number(data.balance || 0).toFixed(2)}`;
+      if (data.subaccountAddr) document.getElementById('statSubaccount').textContent = data.subaccountAddr.slice(0, 6) + '...' + data.subaccountAddr.slice(-4);
+    } catch {}
+    if (!accountRefreshTimer) accountRefreshTimer = setInterval(fetchAccountInfo, 30000);
+  }
+
+  async function checkOnboardStatus() {
+    try {
+      const { data: cd } = await requestJson(`/api/onboard/check/${connectedWallet}`);
+      if (cd.registered) {
+        onboardState.registered = true; setStepDone(1);
+        const { data: sd } = await requestJson(`/api/onboard/subaccounts/${connectedWallet}`);
+        if (sd.subaccounts?.length > 0) {
+          onboardState.hasSubaccount = true;
+          onboardState.subaccountAddr = sd.subaccounts[0].subaccount_address;
+          setStepDone(2);
+          document.getElementById('cfgSubaccount').value = onboardState.subaccountAddr;
+          loadPositions();
+          showStep(3); return;
+        }
+        showStep(2);
+      }
+    } catch {}
+  }
+
+  function setStepDone(n) {
+    const el = document.getElementById('step' + n);
+    el.classList.remove('active'); el.classList.add('done');
+    el.querySelector('.step-num').textContent = '\u2713';
+  }
+  function showStep(n) {
+    for (let i = 1; i <= 3; i++) { const a = document.getElementById('action'+i); if(a) a.style.display = i===n?'':'none'; }
+    for (let i = 1; i <= 3; i++) { const el = document.getElementById('step'+i); if(el && !el.classList.contains('done')) el.classList.toggle('active', i===n); }
+  }
+  function skipToTrading() {
+    document.getElementById('onboardPanel').style.display = 'none';
+    document.getElementById('configPanel').style.display = '';
+    if (onboardState.subaccountAddr) document.getElementById('cfgSubaccount').value = onboardState.subaccountAddr;
+  }
+
+  async function redeemReferral() {
+    const btn = document.getElementById('btnRedeem');
+    btn.disabled = true; btn.textContent = 'Activating...';
+    try {
+      const { res, data } = await requestJson('/api/onboard/redeem', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({walletAddress:connectedWallet}) });
+      const rel = document.getElementById('redeemResult');
+      if (res.ok) { rel.className='onboard-result success'; rel.textContent=data.message||'Activated!'; onboardState.registered=true; setStepDone(1); setTimeout(()=>showStep(2),1000); }
+      else { rel.className='onboard-result error'; rel.textContent=data.error||'Failed'; btn.disabled=false; btn.textContent='Activate Decibel Account'; }
+    } catch(err) { document.getElementById('redeemResult').className='onboard-result error'; document.getElementById('redeemResult').textContent='Error: '+err.message; btn.disabled=false; btn.textContent='Activate Decibel Account'; }
+  }
+
+  async function oneClickSetup() {
+    const ownerKey = document.getElementById('ownerPrivateKey').value.trim();
+    if (!ownerKey) { alert('Enter private key'); return; }
+    const btn = document.getElementById('btnOneClickSetup');
+    btn.disabled = true; btn.textContent = 'Processing...';
+    const rel = document.getElementById('setupResult');
+    try {
+      const { res, data } = await requestJson('/api/onboard/one-click-setup', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ownerPrivateKey:ownerKey,walletAddress:connectedWallet}) });
+      if (!res.ok) throw new Error(data.error||'Failed');
+      document.getElementById('cfgPrivateKey').value = data.apiWalletPrivateKey;
+      document.getElementById('cfgSubaccount').value = data.subaccountAddress;
+      onboardState.hasSubaccount = true; onboardState.subaccountAddr = data.subaccountAddress;
+      rel.className='onboard-result success'; rel.textContent=`Done! Sub: ${data.subaccountAddress.slice(0,10)}...`;
+      document.getElementById('ownerPrivateKey').value = '';
+      setStepDone(2); setTimeout(()=>showStep(3),1000);
+    } catch(err) { rel.className='onboard-result error'; rel.textContent='Failed: '+(err.message||err); btn.disabled=false; btn.textContent='One-Click Setup'; }
+  }
+
+  function hexToBytes(hex) { const b=new Uint8Array(hex.length/2); for(let i=0;i<hex.length;i+=2) b[i/2]=parseInt(hex.substr(i,2),16); return b; }
+  function bytesToHex(bytes) { return Array.from(bytes).map(b=>b.toString(16).padStart(2,'0')).join(''); }
+  function extractAuthHex(r) {
+    if(!r) return null;
+    if(r instanceof Uint8Array) return bytesToHex(r);
+    if(typeof r.bcsToBytes==='function') return bytesToHex(r.bcsToBytes());
+    if(r.authenticator) { if(r.authenticator instanceof Uint8Array) return bytesToHex(r.authenticator); if(typeof r.authenticator.bcsToBytes==='function') return bytesToHex(r.authenticator.bcsToBytes()); }
+    if(typeof r==='string'&&/^[0-9a-fA-F]+$/.test(r)) return r;
+    if(typeof r==='string'&&r.startsWith('0x')) return r.slice(2);
+    for(const k of Object.keys(r)){const v=r[k];if(v instanceof Uint8Array)return bytesToHex(v);if(v&&typeof v.bcsToBytes==='function')return bytesToHex(v.bcsToBytes());}
+    return null;
+  }
+
+  function finishOnboard() { setStepDone(3); skipToTrading(); }
+
+  // ========== Chart ==========
+  let chart=null, candleSeries=null, chartInterval='15m', positionLines=[], orderLines=[], chartRefreshTimer=null;
+
+  function initChart() {
+    const c = document.getElementById('chartContainer');
+    if (!c || chart) return;
+    chart = LightweightCharts.createChart(c, {
+      width: c.clientWidth, height: c.clientHeight || 260,
+      layout: { background:{color:'#ffffff'}, textColor:'#9ca3af', fontSize:11, fontFamily:"'Inter',sans-serif" },
+      grid: { vertLines:{color:'#f3f4f6'}, horzLines:{color:'#f3f4f6'} },
+      crosshair: { mode:LightweightCharts.CrosshairMode.Normal, vertLine:{color:'rgba(107,114,128,0.2)',labelBackgroundColor:'#374151'}, horzLine:{color:'rgba(107,114,128,0.2)',labelBackgroundColor:'#374151'} },
+      rightPriceScale: { borderColor:'#e5e7eb' },
+      timeScale: { borderColor:'#e5e7eb', timeVisible:true, secondsVisible:false },
+    });
+    candleSeries = chart.addCandlestickSeries({ upColor:'#16a34a', downColor:'#dc2626', borderUpColor:'#16a34a', borderDownColor:'#dc2626', wickUpColor:'#16a34a', wickDownColor:'#dc2626' });
+    new ResizeObserver(()=>chart.applyOptions({width:c.clientWidth, height:c.clientHeight || 260})).observe(c);
+    loadCandleData();
+    chartRefreshTimer = setInterval(loadCandleData, 15000);
+  }
+
+  async function loadCandleData() {
+    if (!candleSeries) return;
+    const market = document.getElementById('cfgMarket')?.value || 'BTC/USD';
+    const hm = {'1m':2,'5m':8,'15m':24,'30m':48,'1h':72,'4h':240,'1d':720};
+    try {
+      const { data: candles } = await requestJson(`/api/candles/${encodeURIComponent(market)}?interval=${chartInterval}&hours=${hm[chartInterval]||24}`);
+      if (!Array.isArray(candles)||!candles.length) return;
+      candleSeries.setData(candles.map(c=>({time:Math.floor((c.T||c.t)/1000),open:c.o,high:c.h,low:c.l,close:c.c})).sort((a,b)=>a.time-b.time));
+      chart.timeScale().fitContent();
+      await loadPositionMarkers();
+      updateOrderMarkers();
+    } catch(e) { console.warn('Chart error:', e); }
+  }
+
+  async function loadPositionMarkers() {
+    if (!candleSeries||!connectedWallet) return;
+    positionLines.forEach(l=>candleSeries.removePriceLine(l)); positionLines=[];
+    const sub = document.getElementById('cfgSubaccount')?.value?.trim();
+    if (!sub) return;
+    try {
+      const { data: pos } = await requestJson(`/api/positions/${sub}`);
+      if (!Array.isArray(pos)) return;
+      for (const p of pos) {
+        if (!p.size) continue;
+        positionLines.push(candleSeries.createPriceLine({price:p.entry_price,color:p.size>0?'#16a34a':'#dc2626',lineWidth:2,lineStyle:LightweightCharts.LineStyle.Solid,axisLabelVisible:true,title:`${p.size>0?'LONG':'SHORT'} ${Math.abs(p.size).toFixed(4)} @ ${p.entry_price.toFixed(2)}`}));
+        if (p.estimated_liquidation_price>0) positionLines.push(candleSeries.createPriceLine({price:p.estimated_liquidation_price,color:'#ca8a04',lineWidth:1,lineStyle:LightweightCharts.LineStyle.Dashed,axisLabelVisible:true,title:'LIQ'}));
+      }
+    } catch {}
+  }
+
+  function updateOrderMarkers() {
+    if (!candleSeries||!currentStatus) return;
+    orderLines.forEach(l=>candleSeries.removePriceLine(l)); orderLines=[];
+    [currentStatus.buyOrder,currentStatus.sellOrder].filter(Boolean).forEach(o=>{
+      if (o.status!=='placed') return;
+      orderLines.push(candleSeries.createPriceLine({price:o.price,color:o.side==='buy'?'rgba(22,163,74,0.4)':'rgba(220,38,38,0.4)',lineWidth:1,lineStyle:LightweightCharts.LineStyle.Dotted,axisLabelVisible:true,title:o.side==='buy'?'BUY':'SELL'}));
+    });
+  }
+
+  function changeInterval(interval, btn) {
+    chartInterval = interval;
+    document.querySelectorAll('.chart-interval-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    loadCandleData();
+  }
+
+  function setTradeViewInterval(interval) {
+    chartInterval = interval;
+    loadCandleData();
+  }
+
+  // ========== Market Prices ==========
+  const priceMap = { 'BTC/USD': 'priceBTC', 'ETH/USD': 'priceETH', 'APT/USD': 'priceAPT', 'SOL/USD': 'priceSOL' };
+
+  function refreshSelectedMarketPrice() {
+    const selectedMarket = document.getElementById('cfgMarket')?.value || 'BTC/USD';
+    const selectedPrice = latestMarketPrices[selectedMarket];
+    if (selectedPrice) {
+      document.getElementById('statPriceSidebar').textContent = '$' + Number(selectedPrice).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+    } else if (!currentStatus?.running) {
+      document.getElementById('statPriceSidebar').textContent = '--';
+    }
+    document.getElementById('statMarketSidebar').textContent = selectedMarket;
+  }
+
+  async function fetchMarketPrices() {
+    try {
+      const { data: prices } = await requestJson('/api/prices');
+      latestMarketPrices = prices || {};
+      for (const [market, elId] of Object.entries(priceMap)) {
+        const el = document.getElementById(elId);
+        if (el && prices[market]) {
+          el.textContent = '$' + Number(prices[market]).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+        }
+      }
+      if (!currentStatus?.running) refreshSelectedMarketPrice();
+      refreshTradeTerminalState();
+    } catch {}
+  }
+  fetchMarketPrices();
+  setInterval(fetchMarketPrices, 10000);
+
+  function selectMarket(market) {
+    document.getElementById('cfgMarket').value = market;
+    handleMarketChange(market);
+    document.getElementById('manualTradePanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function handleMarketChange(market) {
+    refreshSelectedMarketPrice();
+    refreshTradeTerminalState();
+    loadCandleData();
+    loadPositions();
+  }
+
+  // ========== Tab Switching ==========
+  function showTab(tab, btn) {
+    document.querySelectorAll('.header-nav a').forEach(a => a.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tabDashboard').style.display = tab === 'dashboard' ? '' : 'none';
+    document.getElementById('tabPositions').style.display = tab === 'positions' ? '' : 'none';
+    document.getElementById('tabHistory').style.display = tab === 'history' ? '' : 'none';
+    if (tab === 'positions') loadPositions();
+    if (tab === 'history') loadHistory();
+  }
+
+  async function loadPositions() {
+    const sub = document.getElementById('cfgSubaccount')?.value?.trim();
+    const body = document.getElementById('positionsBody');
+    const dashboardBody = document.getElementById('dashboardPositionsBody');
+    if (!sub) {
+      latestPositions = [];
+      renderCurrentMarketPosition();
+      const emptyHtml = '<tr><td colspan="7" class="empty-state">Connect wallet to view positions</td></tr>';
+      body.innerHTML = emptyHtml;
+      if (dashboardBody) dashboardBody.innerHTML = emptyHtml;
+      return;
+    }
+    try {
+      const { data: positions } = await requestJson(`/api/positions/${sub}`);
+      latestPositions = Array.isArray(positions) ? positions.map(normalizePosition) : [];
+      renderCurrentMarketPosition();
+      if (!latestPositions.length) {
+        const emptyHtml = '<tr><td colspan="7" class="empty-state">No open positions</td></tr>';
+        body.innerHTML = emptyHtml;
+        if (dashboardBody) dashboardBody.innerHTML = emptyHtml;
+        return;
+      }
+      const rowsHtml = latestPositions.map(p => {
+        const side = p.size > 0 ? 'LONG' : 'SHORT';
+        const sideColor = p.size > 0 ? 'var(--green)' : 'var(--red)';
+        const pnl = p.unrealized_pnl || 0;
+        const pnlColor = pnl >= 0 ? 'var(--green)' : 'var(--red)';
+        return `<tr>
+          <td>${p.market_name || '--'}</td>
+          <td style="color:${sideColor};font-weight:600">${side}</td>
+          <td>${Math.abs(p.size || 0).toFixed(4)}</td>
+          <td>$${(p.entry_price || 0).toFixed(2)}</td>
+          <td>$${(p.mark_price || 0).toFixed(2)}</td>
+          <td style="color:${pnlColor};font-weight:600">$${pnl.toFixed(4)}</td>
+          <td>${p.estimated_liquidation_price > 0 ? '$' + p.estimated_liquidation_price.toFixed(2) : '--'}</td>
+        </tr>`;
+      }).join('');
+      body.innerHTML = rowsHtml;
+      if (dashboardBody) dashboardBody.innerHTML = rowsHtml;
+    } catch {
+      latestPositions = [];
+      renderCurrentMarketPosition();
+      const errorHtml = '<tr><td colspan="7" class="empty-state">Failed to load positions</td></tr>';
+      body.innerHTML = errorHtml;
+      if (dashboardBody) dashboardBody.innerHTML = errorHtml;
+    }
+  }
+
+  async function loadHistory() {
+    const body = document.getElementById('historyBody');
+    const dashboardHistory = document.getElementById('dashboardTradeHistory');
+    if (!currentStatus || !currentStatus.orders?.length) {
+      body.innerHTML = '<tr><td colspan="7" class="empty-state">No trade history</td></tr>';
+      if (dashboardHistory) dashboardHistory.innerHTML = '<div class="trade-history-empty">No trades yet</div>';
+      return;
+    }
+    const historyRows = currentStatus.orders.map(o => {
+      const sideColor = o.side === 'buy' ? 'var(--green)' : 'var(--red)';
+      const time = o.timestamp ? new Date(o.timestamp).toLocaleString() : '--';
+      return `<tr>
+        <td>${time}</td>
+        <td>${currentStatus.marketName || '--'}</td>
+        <td style="color:${sideColor};font-weight:600">${(o.side||'').toUpperCase()}</td>
+        <td>$${(o.price || 0).toLocaleString()}</td>
+        <td>${o.size || '--'}</td>
+        <td>${o.status || '--'}</td>
+        <td style="font-family:'JetBrains Mono',monospace;font-size:11px">${(o.orderId||'').slice(0,10)}...</td>
+      </tr>`;
+    }).join('');
+    body.innerHTML = historyRows;
+    if (dashboardHistory) {
+      dashboardHistory.innerHTML = currentStatus.orders.slice(0, 8).map(o => {
+        const time = o.timestamp ? new Date(o.timestamp).toLocaleTimeString() : '--';
+        const side = (o.side || '').toLowerCase();
+        const status = o.status || '--';
+        return `<div class="trade-history-row">
+          <div class="trade-history-time">${time}</div>
+          <div class="trade-history-side ${side}">${(o.side || '--').toUpperCase()} / ${status}</div>
+          <div class="trade-history-size">${o.size || '--'}</div>
+          <div class="trade-history-price">$${Number(o.price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+        </div>`;
+      }).join('');
+    }
+  }
+
+  // ========== Uptime Timer ==========
+  setInterval(() => {
+    if (currentStatus?.running && currentStatus.uptime) {
+      currentStatus.uptime += 1000;
+      document.getElementById('statUptime').textContent = formatUptime(currentStatus.uptime);
+    }
+  }, 1000);
+
+  toggleStrategyFields();
+  toggleManualTradeFields();
+  handleMarketChange(document.getElementById('cfgMarket').value);
+</script>
+
+</body>
+</html>
